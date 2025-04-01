@@ -40,6 +40,7 @@ def get_SNR(snr_dB: float) -> float:
 
 SNRs = [get_SNR(SNR_dB) for SNR_dB in range (-10, 61, 10)]
 FFT_sizes = [np.pow(2, k) for k in range(10, 21, 2)]
+SNRs_in_dB = [SNR_dB for SNR_dB in range (-10, 61, 10)]
 
 # TODO: Compute all n samples at the same time
 def sample(sigma: float, rng: np.random.Generator) -> np.typing.ArrayLike:
@@ -49,6 +50,53 @@ def sample(sigma: float, rng: np.random.Generator) -> np.typing.ArrayLike:
     for n in range(n_0, n_0 + N):
         x[n - n_0] = A * np.exp(1j * (omega_0 * n * T + phi)) + w_r[n - n_0] + 1j * w_i[n - n_0]
     return x
+
+
+def computeVariance(SNR_dB: float, FFT_Size: int) :
+    seed = time.time()
+    rng = np.random.default_rng(seed=int(seed))
+
+    SNR = get_SNR(SNR_dB)
+    #TODO: change this horrendous nameeeeeeee
+    sigma_sqr, sigma = get_sigma_sqr(SNR)
+
+    omega_variances = np.zeros(len(FFT_sizes))
+    phi_variances = np.zeros(len(FFT_sizes))
+
+    omega_means = np.zeros(len(FFT_sizes))
+    phi_means = np.zeros(len(FFT_sizes))
+
+    omega_estimates = np.zeros(iterations)
+    phi_estimates = np.zeros(iterations)
+
+    for n in range(iterations) :
+        x_samples = sample(sigma, rng)
+        FFT = np.fft.fft(x_samples, FFT_Size)
+        m_max = np.argmax(np.abs(FFT))
+
+        omega_est = 2 * np.pi * m_max / (FFT_Size * T)
+        phi_est = get_phi_est(omega_est, x_samples)
+        
+        omega_estimates[n] = omega_est
+        phi_estimates[n] = phi_est
+
+    omega_variance = np.var(omega_estimates)
+    phi_variance = np.var(phi_estimates)
+
+    return omega_variance
+
+
+def plotVarianceBySNR(arrayOfSNR, FFT_size) :
+
+    variances = np.array([])
+    for i in range(len(arrayOfSNR)) :
+        variances[i] = computeVariance(arrayOfSNR, FFT_size)
+    plt.plot(arrayOfSNR, variances)
+    plt.show()
+
+
+
+
 
 def solve_expensive(SNR_dB: float):
     seed = time.time()
@@ -164,10 +212,16 @@ def solve_cheap(SNR_dB: float, FFT_size: float):
     
     print("phi_varianve")
 
+
+
+
+
 def main():
     # solve_expensive(-10)
-    solve_cheap(10, FFT_sizes[0])
-    plt.show()
+    #solve_cheap(10, FFT_sizes[0])
+    #plt.show()
+
+    plotVarianceBySNR(SNRs_in_dB, FFT_sizes[0])
 
 if __name__ == "__main__":
     main()
