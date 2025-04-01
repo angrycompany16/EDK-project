@@ -4,6 +4,7 @@ import os
 import time
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+import math
 
 T = 1e-6
 F_s = 1e6
@@ -26,7 +27,7 @@ def omega_CRLB(sigma_sqr: float) -> float:
 def phi_CRLB(sigma_sqr: float) -> float:
     return (12 * sigma_sqr) * (np.pow(n_0, 2) * N + 2 * n_0 * P + Q) / (np.pow(A, 2) * np.pow(N, 2) * ((np.pow(N, 2) - 1)))
 
-def F(omega: float, x: np.typing.ArrayLike) -> float:
+def F(omega: float, x: np.typing.ArrayLike) -> complex:
     s = 0
     for n in range(N):
         s += x[n] * np.exp(-1j * omega * n * T)
@@ -131,12 +132,13 @@ def solve_cheap(SNR_dB: float, FFT_size: float):
     SNR = get_SNR(SNR_dB)
     sigma_sqr, sigma = get_sigma_sqr(SNR)
 
-    omega_estimates = np.zeros(iterations)
-    phi_estimates = np.zeros(iterations)
+    omega_rough_estimates = np.zeros(iterations)
+    omega_refined_estimates = np.zeros(iterations)
+    # phi_estimates = np.zeros(iterations)
 
-    for n in range(iterations):
+    for i in range(iterations):
         x_samples = sample(sigma, rng)
-        
+            
         # print(np.abs(x_samples))
         # plt.plot(x_values, np.real(x_samples))
         # plt.plot(x_values, np.imag(x_samples))
@@ -148,25 +150,34 @@ def solve_cheap(SNR_dB: float, FFT_size: float):
         m_max = np.argmax(np.abs(FFT))
 
         omega_est_rough = 2 * np.pi * m_max / (FFT_size * T)
-        
-        # What can we optimize when we've already used the FFT?
-        # minimize wrt. -abs(F(omega, x))
+        omega_rough_estimates[i] = omega_est_rough
 
-        def optimizer(x, *args) -> float:
-            return F(x, *args)
+        def optimizer(x, samples) -> float:
+            return -np.abs(F(x, samples))
 
-        omega_est_refined = opt.minimize(F, omega_est_rough, )
+        omega_refined_estimates[i] = opt.minimize(optimizer, omega_est_rough, x_samples, method='Nelder-Mead').x
 
-        # phi_est = get_phi_est(omega_est, x_samples)
-        
-        # omega_estimates[n] = omega_est
-        # phi_estimates[n] = phi_est
+
+    # phi_est = get_phi_est(omega_est, x_samples)
     
-    print("phi_varianve")
+    # omega_estimates[n] = omega_est_refined
+    # phi_estimates[n] = phi_est
+    
+    # omega_est_average = np.mean()
+    print("Variance rough")
+    print(np.var(omega_rough_estimates))
+    print("Mean rough")
+    print(np.mean(omega_rough_estimates))
+
+    print("Variance refined")
+    print(np.var(omega_refined_estimates))
+    print("Mean refined")
+    print(np.mean(omega_refined_estimates))
+    # print("phi_variance")
 
 def main():
     # solve_expensive(-10)
-    solve_cheap(10, FFT_sizes[0])
+    solve_cheap(20, FFT_sizes[0])
     plt.show()
 
 if __name__ == "__main__":
