@@ -1,2 +1,4 @@
-# We are making a project
-# Don't understand a thing :D
+import numpy as np
+
+F_s = 1e6
+omega_0 = 2 * np.pi * 
